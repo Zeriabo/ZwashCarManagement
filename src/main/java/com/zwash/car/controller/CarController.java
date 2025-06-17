@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import com.zwash.auth.exceptions.UserIsNotFoundException;
 import com.zwash.auth.security.JwtUtils;
 import com.zwash.auth.service.UserService;
 import com.zwash.car.exceptions.CarDoesNotExistException;
+import com.zwash.auth.exceptions.CarExistsException;
 import com.zwash.car.service.CarService;
 import com.zwash.common.pojos.UserCar;
 import com.zwash.common.pojos.Car;
@@ -46,31 +48,32 @@ public class CarController {
     @PostMapping("/register")
     @ApiResponses(value = {
             @ApiResponse(code = 201, message = "Car registered successfully"),
-            @ApiResponse(code = 500, message = "Internal server error"),
-            @ApiResponse(code = 404, message = "User not found")
+            @ApiResponse(code = 404, message = "User not found"),
+            @ApiResponse(code = 500, message = "Internal server error")
     })
-    public ResponseEntity<Void> registerCar(@RequestBody UserCar userCar) {
+    public ResponseEntity<String> registerCar(@RequestBody UserCar userCar) {
         try {
-            Car car = carService.register(userCar);
+            Car car = carService.register(userCar); 
 
-            if (car.getRegisterationPlate() == null || car.getUser() == null) {
-                return ResponseEntity.status(500).build();
+            if (car == null || car.getRegisterationPlate() == null || car.getUser() == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
 
-            // Check if the user exists by attempting to fetch the user
-            User user = userService.getUser(car.getUser().getId());
-
-            if (user == null) {
-                return ResponseEntity.status(404).build(); // User not found
-            }
-
-            return ResponseEntity.status(201).build();
+            return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (UserIsNotFoundException e) {
-            return ResponseEntity.status(404).build(); // User not found
-        } catch (Exception e) {
-            return ResponseEntity.status(500).build(); // Internal server error
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }catch (CarExistsException ex)
+        {
+        	  return ResponseEntity
+        		        .status(HttpStatus.CONFLICT)
+        		        .body("Car already exists");
+        }
+        
+        catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 
     @ApiOperation(value = "Get car details by registration plate")
     @GetMapping("/{registrationPlate}")
@@ -94,7 +97,7 @@ public class CarController {
 			@ApiResponse(code = 200, message = "Cars retrieved successfully"),
 			@ApiResponse(code = 404, message = "User not found")
 	})
-	public ResponseEntity<List<Car>> getCarsForUser(@PathVariable String token) throws UserIsNotFoundException {
+	public ResponseEntity<List<Car>> getCarsForUser(@PathVariable String token) throws UserIsNotFoundException, com.zwash.common.exceptions.UserIsNotFoundException {
 		User user = userService.getUserFromToken(token);
 		
 		List<Car> cars = carService.getCarsOfUser(user);
