@@ -19,6 +19,10 @@ import com.zwash.common.pojos.User;
 import com.zwash.common.pojos.UserCar;
 import com.zwash.common.repository.CarRepository;
 import com.zwash.common.repository.UserRepository;
+import com.zwash.common.grpc.UserIdRequest;
+import com.zwash.common.grpc.UserResponse;
+import com.zwash.common.grpc.UserServiceGrpc;
+
 
 @Service
 public class CarServiceImpl implements CarService {
